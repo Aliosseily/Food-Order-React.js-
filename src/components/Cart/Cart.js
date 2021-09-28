@@ -1,24 +1,34 @@
-import { useContext } from "react";
+import { useContext, useState } from "react";
 import Modal from "../UI/Modal";
 import styles from "./Cart.module.css";
 import CartContext from "../../store/cart-context";
 import CartItem from "./CartItem";
+import Checkout from "./Checkout";
 const Cart = (props) => {
+  const [isCheckout, setIsCheckout] = useState(false);
+
   const cartCtx = useContext(CartContext);
   const totalAmount = `$${cartCtx.totalAmount.toFixed(2)}`;
   const hasItems = cartCtx.items.length > 0;
 
-  const cartItemAddHandler = item => {
+  const cartItemAddHandler = (item) => {
     const obj = {
       ...item,
-      amount:1
-    }
-    cartCtx.addItem(obj)
-  }
+      amount: 1,
+    };
+    cartCtx.addItem(obj);
+  };
 
-  const cartItemRemoveHandler = id => {
-    cartCtx.removeItem(id)
-  }
+  const cartItemRemoveHandler = (id) => {
+    cartCtx.removeItem(id);
+  };
+
+  const orderHandler = () => {
+    setIsCheckout(true);
+  };
+  const cancelFormHandler = () => {
+    setIsCheckout(false);
+  };
 
   const cartItems = (
     <ul className={styles["cart-items"]}>
@@ -34,6 +44,20 @@ const Cart = (props) => {
       ))}
     </ul>
   );
+
+  const modalActions = (
+    <div className={styles.actions}>
+      <button className={styles["button--alt"]} onClick={props.onHideCart}>
+        Close
+      </button>
+      {hasItems && (
+        <button onClick={orderHandler} className={styles.button}>
+          Order
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <Modal onCloseCart={props.onHideCart}>
       {cartItems}
@@ -41,12 +65,9 @@ const Cart = (props) => {
         <span>Total Amount</span>
         <span>{totalAmount}</span>
       </div>
-      <div className={styles.actions}>
-        <button className={styles["button--alt"]} onClick={props.onHideCart}>
-          Close
-        </button>
-        {hasItems && <button className={styles.button}>Order</button>}
-      </div>
+      {isCheckout && <Checkout onCancel={cancelFormHandler} />}
+
+      {!isCheckout && modalActions}
     </Modal>
   );
 };
