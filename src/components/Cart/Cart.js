@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import React, { useContext, useState } from "react";
 import Modal from "../UI/Modal";
 import styles from "./Cart.module.css";
 import CartContext from "../../store/cart-context";
@@ -6,6 +6,9 @@ import CartItem from "./CartItem";
 import Checkout from "./Checkout";
 const Cart = (props) => {
   const [isCheckout, setIsCheckout] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [didSubmit, setDidSubmit] = useState(false);
+  const [error, setError] = useState();
 
   const cartCtx = useContext(CartContext);
   const totalAmount = `$${cartCtx.totalAmount.toFixed(2)}`;
@@ -26,19 +29,36 @@ const Cart = (props) => {
     setIsCheckout(true);
   };
 
-
-  const submitOrderHandler = (userData) => {
-    fetch("https://react-http-9a2e3-default-rtdb.asia-southeast1.firebasedatabase.app/orders.json",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-      },
-      body:JSON.stringify({
-        user:userData,
-        orderedItems:cartCtx.items
-      })
-    })
-  }
+  const submitOrderHandler = async (userData) => {
+    setIsSubmitting(true);
+   setError();
+    try {
+      const response = await fetch(
+        "https://react-http-9a2e3-default-rtdb.asia-southeast1.firebasedatabase.app/orders.json",
+        {
+          method: "POST",
+          // when I add headers error message below was not returned
+          // headers:{
+          //   'Content-Type':'application/json'
+          // },
+          body: JSON.stringify({
+            user: userData,
+            orderedItems: cartCtx.items,
+          }),
+        }
+      );
+      console.log("response", response);
+      if (!response.ok) {
+        throw new Error("Something went wrong while trying to order");
+      }
+    } catch (error) {
+      setDidSubmit(false);
+      setError(error.message || "Something went wrong!");
+    }
+    setIsSubmitting(false);
+    setDidSubmit(true);
+    cartCtx.clearCartItems()
+  };
 
   const cancelFormHandler = () => {
     setIsCheckout(false);
@@ -72,16 +92,37 @@ const Cart = (props) => {
     </div>
   );
 
-  return (
-    <Modal onCloseCart={props.onHideCart}>
+  const cartModalcontent = (
+    <React.Fragment>
       {cartItems}
       <div className={styles.total}>
         <span>Total Amount</span>
         <span>{totalAmount}</span>
       </div>
-      {isCheckout && <Checkout onCancel={cancelFormHandler} onConfirm={submitOrderHandler} />}
-
+      {error && <p className={styles.error}>{error}</p>}
+      {isCheckout && (
+        <Checkout onCancel={cancelFormHandler} onConfirm={submitOrderHandler} />
+      )}
       {!isCheckout && modalActions}
+    </React.Fragment>
+  );
+
+  const isSubmittingModalcontent = <p>Sending order data...</p>;
+  const didSubmitModalcontent = (
+    <React.Fragment>
+      <p>Successfully sent the order.</p>
+      <div className={styles.actions}>
+        <button className={styles["button--alt"]} onClick={props.onHideCart}>
+          Close
+        </button>
+      </div>
+    </React.Fragment>
+  );
+  return (
+    <Modal onCloseCart={props.onHideCart}>
+      { (error || (!isSubmitting && !didSubmit)) && cartModalcontent}
+      {isSubmitting && isSubmittingModalcontent}
+      {!isSubmitting && didSubmit && !error && didSubmitModalcontent}
     </Modal>
   );
 };
